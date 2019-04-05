@@ -73,6 +73,7 @@ import { CloudFoundryStacksComponent } from './tabs/cloud-foundry-stacks/cloud-f
 import { CloudFoundrySummaryTabComponent } from './tabs/cloud-foundry-summary-tab/cloud-foundry-summary-tab.component';
 import { CloudFoundryUsersComponent } from './tabs/cloud-foundry-users/cloud-foundry-users.component';
 import { InviteUsersComponent } from './users/invite-users/invite-users.component';
+import { RemoveUserComponent } from './users/remove-user/remove-user.component';
 import { UsersRolesComponent } from './users/manage-users/manage-users.component';
 
 /* tslint:enable:max-line-length */
@@ -88,6 +89,11 @@ const usersRoles = [
     pathMatch: 'full'
   },
   {
+    path: 'organizations/:orgId/users/remove',
+    component: RemoveUserComponent,
+    pathMatch: 'full'
+  },
+  {
     path: 'organizations/:orgId/users/invite',
     component: InviteUsersComponent,
     pathMatch: 'full'
@@ -95,6 +101,11 @@ const usersRoles = [
   {
     path: 'organizations/:orgId/spaces/:spaceId/users/manage',
     component: UsersRolesComponent,
+    pathMatch: 'full'
+  },
+  {
+    path: 'organizations/:orgId/spaces/:spaceId/users/remove',
+    component: RemoveUserComponent,
     pathMatch: 'full'
   },
   {

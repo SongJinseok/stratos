@@ -188,7 +188,7 @@ export function getActiveRouteCfOrgSpace(activatedRoute: ActivatedRoute) {
   return ({
     cfGuid: getIdFromRoute(activatedRoute, 'endpointId'),
     orgGuid: getIdFromRoute(activatedRoute, 'orgId'),
-    spaceGuid: getIdFromRoute(activatedRoute, 'spaceId')
+    spaceGuid: getIdFromRoute(activatedRoute, 'spaceId'),
   });
 }
 
@@ -348,6 +348,23 @@ export function createCfOrgSpaceSteppersUrl(
     }
   }
   route += stepperPath;
+  return route;
+}
+
+export function createCfOrgSpaceUserRemovalUrl(
+  cfGuid: string,
+  orgGuid?: string,
+  spaceGuid?: string,
+): string {
+  let route = `/cloud-foundry/${cfGuid}`;
+  if (orgGuid) {
+    route += `/organizations/${orgGuid}`;
+    if (spaceGuid) {
+      route += `/spaces/${spaceGuid}`;
+    }
+  }
+  route += '/users/remove';
+
   return route;
 }
 

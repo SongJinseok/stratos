@@ -18,6 +18,7 @@ import { ActiveRouteCfOrgSpace } from '../../../../../features/cloud-foundry/cf-
 import {
   canUpdateOrgSpaceRoles,
   createCfOrgSpaceSteppersUrl,
+  createCfOrgSpaceUserRemovalUrl,
   waitForCFPermissions,
 } from '../../../../../features/cloud-foundry/cf.helpers';
 import { CfUserService } from './../../../../data-services/cf-user.service';
@@ -94,6 +95,15 @@ export class CfUserListConfigService extends ListConfig<APIResource<CfUser>> {
     createVisible: (row$: Observable<APIResource>) => this.createCanUpdateOrgSpaceRoles()
   };
 
+  removeUserAction: IListAction<APIResource<CfUser>> = {
+    action: (user: APIResource<CfUser>) => {
+      this.store.dispatch(new UsersRolesSetUsers(this.cfUserService.activeRouteCfOrgSpace.cfGuid, [user.entity]));
+      this.router.navigate([this.createRemoveUserUrl()], { queryParams: { user: user.entity.guid }});
+    },
+    label: 'Remove User',
+    createVisible: (row$: Observable<APIResource>) => this.createCanUpdateOrgSpaceRoles()
+  };
+
   manageMultiUserAction: IMultiListAction<APIResource<CfUser>> = {
     action: (users: APIResource<CfUser>[]) => {
       this.store.dispatch(new UsersRolesSetUsers(this.cfUserService.activeRouteCfOrgSpace.cfGuid, users.map(user => user.entity)));
@@ -113,6 +123,14 @@ export class CfUserListConfigService extends ListConfig<APIResource<CfUser>> {
     return createCfOrgSpaceSteppersUrl(
       this.cfUserService.activeRouteCfOrgSpace.cfGuid,
       `/users/manage`,
+      this.activeRouteCfOrgSpace.orgGuid,
+      this.activeRouteCfOrgSpace.spaceGuid
+    );
+  }
+
+  protected createRemoveUserUrl(): string {
+    return createCfOrgSpaceUserRemovalUrl(
+      this.cfUserService.activeRouteCfOrgSpace.cfGuid,
       this.activeRouteCfOrgSpace.orgGuid,
       this.activeRouteCfOrgSpace.spaceGuid
     );
@@ -264,7 +282,7 @@ export class CfUserListConfigService extends ListConfig<APIResource<CfUser>> {
   getColumns = () => this.columns;
   getGlobalActions = () => [];
   getMultiActions = () => [this.manageMultiUserAction];
-  getSingleActions = () => [this.manageUserAction];
+  getSingleActions = () => [this.manageUserAction, this.removeUserAction];
   getMultiFiltersConfigs = () => this.multiFilterConfigs;
   getDataSource = () => this.dataSource;
   getInitialised = () => this.initialised;
