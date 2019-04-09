@@ -110,10 +110,9 @@ export class UsersRolesConfirmComponent implements OnInit, AfterContentInit {
   constructor(private store: Store<AppState>, private cfRolesService: CfRolesService, private cfUserService: CfUserService) { }
 
   ngOnInit() {
-    console.log('onInit');
     this.createCfAndOrgObs();
-
     this.createChangesObs();
+
     this.isBlocked$ = this.cfAndOrgGuid$.pipe(
       filter(res => !!res),
       map(() => false),
@@ -128,7 +127,6 @@ export class UsersRolesConfirmComponent implements OnInit, AfterContentInit {
   }
 
   onEnter = () => {
-    console.log('onEnter confirm');
     // Kick off an update
     this.updateChanges.next(new Date().getTime());
     // Ensure that any entity we're going to show the state for is clear of any previous or unrelated errors
@@ -181,35 +179,27 @@ export class UsersRolesConfirmComponent implements OnInit, AfterContentInit {
     this.cfAndOrgGuid$ = this.store.select(selectUsersRoles).pipe(
       map(mu => ({ cfGuid: mu.cfGuid, orgGuid: mu.newRoles.orgGuid })),
       filter(mu => !!mu.cfGuid && !!mu.orgGuid),
-      // startWith({ cfGuid: null, orgGuid: null}),
       distinctUntilChanged((oldMU, newMU) => {
         return oldMU.cfGuid === newMU.cfGuid && oldMU.orgGuid === newMU.orgGuid;
       }),
-      tap(mu => console.log('createCfAndOrgObs', mu)),
     );
   }
 
   private createChangesObs() {
-    console.log('createChangesObs');
     this.changes$ = this.updateChanges.pipe(
-      tap(res => console.log('1bef', res)),
       withLatestFrom(this.cfAndOrgGuid$),
-      tap(res => console.log('2bef', res)),
       mergeMap(([changed, { cfGuid, orgGuid }]) => {
-        console.log('mergeMap cfGuid', cfGuid);
-        console.log('mergeMap orgGuid', orgGuid);
         return observableCombineLatest(
-          this.cfUserService.getUsers(cfGuid).pipe(tap(getUsers => console.log('getUsers', getUsers))),
-          this.cfRolesService.fetchOrgEntity(cfGuid, orgGuid).pipe(tap(fetchOrgEntity => console.log('fetchOrgEntity', fetchOrgEntity)))
+          this.cfUserService.getUsers(cfGuid),
+          // .pipe(tap(getUsers => console.log('getUsers', getUsers))),
+          this.cfRolesService.fetchOrgEntity(cfGuid, orgGuid)
+          // .pipe(tap(fetchOrgEntity => console.log('fetchOrgEntity', fetchOrgEntity)))
         );
       }),
-      tap(res => console.log('33bef', res)),
       withLatestFrom(
         this.store.select(selectUsersRolesChangedRoles),
       ),
-      tap(res => console.log('4bef', res)),
       map(([[users, org], changes]) => {
-        console.log('changessss');
         return changes
           .map(change => ({
             ...change,

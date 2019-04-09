@@ -15,7 +15,7 @@ import {
 } from '../../../../../../store/src/actions/users-roles.actions';
 import { AppState } from '../../../../../../store/src/app-state';
 import { selectUsersRoles, selectUsersRolesRoles } from '../../../../../../store/src/selectors/users-roles.selector';
-import { CfUser, OrgUserRoleNames } from '../../../../../../store/src/types/user.types';
+import { CfUser, OrgUserRoleNames, UserRoleInOrg } from '../../../../../../store/src/types/user.types';
 import { StepOnNextFunction } from '../../../../shared/components/stepper/step/step.component';
 import { CfUserService } from '../../../../shared/data-services/cf-user.service';
 import { ActiveRouteCfOrgSpace } from '../../cf-page.types';
@@ -41,6 +41,7 @@ export class RemoveUserComponent implements OnDestroy {
   orgGuid: string;
   spaceGuid: string;
   applyStarted = false;
+  onlySpaces = false;
 
   constructor(
     private store: Store<AppState>,
@@ -52,12 +53,13 @@ export class RemoveUserComponent implements OnDestroy {
     this.defaultCancelUrl = this.createReturnUrl(activeRouteCfOrgSpace);
     this.orgGuid = this.activeRouteCfOrgSpace.orgGuid;
     this.spaceGuid = this.activeRouteCfOrgSpace.spaceGuid;
+    this.onlySpaces = this.route.snapshot.queryParamMap.get('spaces') === 'true';
 
-    const userQParam = this.route.snapshot.queryParams.user;
+    const userQParam = this.route.snapshot.queryParamMap.get('user');
     if (userQParam) {
       this.singleUser$ = this.cfUserService.getUser(activeRouteCfOrgSpace.cfGuid, userQParam)
         .pipe(
-          map(user => user.entity)
+          map(user => user.entity),
         );
         // catchError and throw 404
     } else {
@@ -77,34 +79,83 @@ export class RemoveUserComponent implements OnDestroy {
     });
 
     this.cfRolesService.existingRoles$.pipe(
-      combineLatest(this.singleUser$)
+      combineLatest(this.singleUser$),
+      first(),
     ).subscribe(([existingRoles, user]) => {
+      const changes = [];
       const orgs = existingRoles[user.guid];
-      const org = orgs[this.orgGuid];
-      const changes: CfRoleChange[] = [];
+      let orgGuids;
 
-      for (const role of Object.keys(org.permissions)) {
-        const value = org.permissions[role];
+      if (this.orgGuid) {
+        orgGuids = [this.orgGuid];
+      } else {
+        orgGuids = Object.keys(orgs);
+      }
 
-        if (value) {
-          this.store.dispatch(new UsersRolesSetOrgRole(this.orgGuid, role, false));
-          changes.push({
-            userGuid: user.guid,
-            orgGuid: this.orgGuid,
-            add: false,
-            role: OrgUserRoleNames.MANAGER
-          });
+      for (const orgGuid of orgGuids) {
+        const org = orgs[orgGuid];
+
+        if (!this.spaceGuid && !this.onlySpaces) {
+          for (const role of Object.keys(org.permissions)) {
+            const value = org.permissions[role];
+
+            if (value) {
+              this.store.dispatch(new UsersRolesSetOrgRole(orgGuid, role, false));
+              changes.push({
+                userGuid: user.guid,
+                orgGuid,
+                add: false,
+                role,
+              });
+            }
+          }
+        }
+
+        let spaceGuids;
+
+        if (this.spaceGuid) {
+          spaceGuids = [this.spaceGuid];
+        } else {
+          spaceGuids = Object.keys(org.spaces);
+        }
+
+        for (const spaceGuid of spaceGuids) {
+          const space = org.spaces[spaceGuid];
+
+          for (const role of Object.keys(space.permissions)) {
+            const value = space.permissions[role];
+            if (value) {
+              this.store.dispatch(new UsersRolesSetSpaceRole(orgGuid, spaceGuid, role, false));
+              changes.push({
+                userGuid: user.guid,
+                orgGuid,
+                spaceGuid,
+                add: false,
+                role,
+              });
+            }
+          }
         }
       }
 
       this.store.dispatch(new UsersRolesSetChanges(changes));
-
-      // this.store.dispatch(new UsersRolesSetSpaceRole(this.orgGuid, this.spaceGuid, role, false));
     });
   }
 
   ngOnDestroy(): void {
     this.store.dispatch(new UsersRolesClear());
+  }
+
+  markRolesToRemoval() {
+    // TBD
+  }
+
+  markOrgRolesToRemoval() {
+    // TBD
+  }
+
+  markSpaceRolesToRemoval() {
+    // TBD
   }
 
   /**

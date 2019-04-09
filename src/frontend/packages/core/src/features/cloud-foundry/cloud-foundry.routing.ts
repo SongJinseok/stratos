@@ -84,6 +84,11 @@ const usersRoles = [
     pathMatch: 'full'
   },
   {
+    path: 'users/remove',
+    component: RemoveUserComponent,
+    pathMatch: 'full'
+  },
+  {
     path: 'organizations/:orgId/users/manage',
     component: UsersRolesComponent,
     pathMatch: 'full'

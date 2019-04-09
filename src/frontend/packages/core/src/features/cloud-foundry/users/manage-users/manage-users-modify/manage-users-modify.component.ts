@@ -191,10 +191,7 @@ export class UsersRolesModifyComponent implements OnInit, OnDestroy {
 
     this.valid$ = this.store.select(selectUsersRolesRoles).pipe(
       debounceTime(150),
-      switchMap(newRoles => {
-        console.log(newRoles);
-        return this.cfRolesService.createRolesDiff(newRoles.orgGuid);
-      }),
+      switchMap(newRoles => this.cfRolesService.createRolesDiff(newRoles.orgGuid)),
       map(changes => !!changes.length)
     );
   }

@@ -95,15 +95,6 @@ export class CfUserListConfigService extends ListConfig<APIResource<CfUser>> {
     createVisible: (row$: Observable<APIResource>) => this.createCanUpdateOrgSpaceRoles()
   };
 
-  removeUserAction: IListAction<APIResource<CfUser>> = {
-    action: (user: APIResource<CfUser>) => {
-      this.store.dispatch(new UsersRolesSetUsers(this.cfUserService.activeRouteCfOrgSpace.cfGuid, [user.entity]));
-      this.router.navigate([this.createRemoveUserUrl()], { queryParams: { user: user.entity.guid }});
-    },
-    label: 'Remove User',
-    createVisible: (row$: Observable<APIResource>) => this.createCanUpdateOrgSpaceRoles()
-  };
-
   manageMultiUserAction: IMultiListAction<APIResource<CfUser>> = {
     action: (users: APIResource<CfUser>[]) => {
       this.store.dispatch(new UsersRolesSetUsers(this.cfUserService.activeRouteCfOrgSpace.cfGuid, users.map(user => user.entity)));
@@ -118,6 +109,48 @@ export class CfUserListConfigService extends ListConfig<APIResource<CfUser>> {
     label: 'Manage',
     description: `Manage roles`,
   };
+
+  removeUserActions(): IListAction<APIResource<CfUser>>[] {
+    const activeRouteCfOrgSpace = this.cfUserService.activeRouteCfOrgSpace;
+    const removeUrl = this.createRemoveUserUrl();
+    const createVisible = (row$: Observable<APIResource>) => this.createCanUpdateOrgSpaceRoles();
+
+    const fromSpaces: IListAction<APIResource<CfUser>> = {
+      action: (user: APIResource<CfUser>) => {
+        this.store.dispatch(new UsersRolesSetUsers(activeRouteCfOrgSpace.cfGuid, [user.entity]));
+        this.router.navigate([removeUrl], { queryParams: { user: user.entity.guid, spaces: true } });
+      },
+      label: (() => {
+        if (activeRouteCfOrgSpace.spaceGuid) {
+          return 'Remove from space';
+        } else {
+          return 'Remove from spaces';
+        }
+      })(),
+      createVisible
+    };
+
+    const fromOrgsSpaces: IListAction<APIResource<CfUser>> = {
+      action: (user: APIResource<CfUser>) => {
+        this.store.dispatch(new UsersRolesSetUsers(activeRouteCfOrgSpace.cfGuid, [user.entity]));
+        this.router.navigate([removeUrl], { queryParams: { user: user.entity.guid } });
+      },
+      label: (() => {
+        if (activeRouteCfOrgSpace.orgGuid) {
+          return 'Remove from org and spaces';
+        } else {
+          return 'Remove from orgs and spaces';
+        }
+      })(),
+      createVisible
+    };
+
+    if (activeRouteCfOrgSpace.spaceGuid) {
+      return [fromSpaces];
+    }
+
+    return [fromOrgsSpaces, fromSpaces];
+  }
 
   protected createManagerUsersUrl(): string {
     return createCfOrgSpaceSteppersUrl(
@@ -282,7 +315,7 @@ export class CfUserListConfigService extends ListConfig<APIResource<CfUser>> {
   getColumns = () => this.columns;
   getGlobalActions = () => [];
   getMultiActions = () => [this.manageMultiUserAction];
-  getSingleActions = () => [this.manageUserAction, this.removeUserAction];
+  getSingleActions = () => [this.manageUserAction, ...this.removeUserActions()];
   getMultiFiltersConfigs = () => this.multiFilterConfigs;
   getDataSource = () => this.dataSource;
   getInitialised = () => this.initialised;
