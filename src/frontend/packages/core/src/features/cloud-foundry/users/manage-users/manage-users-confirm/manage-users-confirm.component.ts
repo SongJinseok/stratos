@@ -1,7 +1,7 @@
 import { AfterContentInit, Component, OnInit } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest as observableCombineLatest, Observable, Subject } from 'rxjs';
-import { distinctUntilChanged, filter, first, map, mergeMap, startWith, tap, withLatestFrom } from 'rxjs/operators';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { distinctUntilChanged, filter, first, map, mergeMap, startWith, withLatestFrom } from 'rxjs/operators';
 
 import { UsersRolesClearUpdateState } from '../../../../../../../store/src/actions/users-roles.actions';
 import { ChangeUserRole } from '../../../../../../../store/src/actions/users.actions';
@@ -77,7 +77,7 @@ export class UsersRolesConfirmComponent implements OnInit, AfterContentInit {
   changes$: Observable<CfRoleChangeWithNames[]>;
   userSchemaKey = cfUserSchemaKey;
   monitorState = AppMonitorComponentTypes.UPDATE;
-  private cfAndOrgGuid$: Observable<{ cfGuid: string, orgGuid: string }>;
+  private cfAndOrgGuid$: Observable<string>;
   public orgName$ = new BehaviorSubject('');
   public isBlocked$: Observable<boolean>;
 
@@ -121,9 +121,10 @@ export class UsersRolesConfirmComponent implements OnInit, AfterContentInit {
   }
 
   ngAfterContentInit() {
-    this.cfAndOrgGuid$.pipe(
-      mergeMap(({ cfGuid, orgGuid }) => this.cfRolesService.fetchOrgEntity(cfGuid, orgGuid)),
-    ).subscribe(org => this.orgName$.next(org.entity.name));
+    // TODO: This updates the name a the tope of the stepper, need a way to handle multiple orgs
+    // this.cfAndOrgGuid$.pipe(
+    //   mergeMap(({ cfGuid, orgGuid }) => this.cfRolesService.fetchOrgEntity(cfGuid, orgGuid)),
+    // ).subscribe(org => this.orgName$.next(org.entity.name));
   }
 
   onEnter = () => {
@@ -176,38 +177,47 @@ export class UsersRolesConfirmComponent implements OnInit, AfterContentInit {
   }
 
   private createCfAndOrgObs() {
+    // this.cfAndOrgGuid$ = this.store.select(selectUsersRoles).pipe(
+    //   map(mu => ({ cfGuid: mu.cfGuid, orgGuid: mu.newRoles.orgGuid })),
+    //   filter(mu => !!mu.cfGuid && !!mu.orgGuid),
+    //   distinctUntilChanged((oldMU, newMU) => {
+    //     return oldMU.cfGuid === newMU.cfGuid && oldMU.orgGuid === newMU.orgGuid;
+    //   }),
+    // );
     this.cfAndOrgGuid$ = this.store.select(selectUsersRoles).pipe(
-      map(mu => ({ cfGuid: mu.cfGuid, orgGuid: mu.newRoles.orgGuid })),
-      filter(mu => !!mu.cfGuid && !!mu.orgGuid),
-      distinctUntilChanged((oldMU, newMU) => {
-        return oldMU.cfGuid === newMU.cfGuid && oldMU.orgGuid === newMU.orgGuid;
-      }),
+      map(mu => mu.cfGuid),
+      filter(cfGuid => !!cfGuid),
+      distinctUntilChanged(),
     );
   }
 
   private createChangesObs() {
     this.changes$ = this.updateChanges.pipe(
       withLatestFrom(this.cfAndOrgGuid$),
-      mergeMap(([changed, { cfGuid, orgGuid }]) => {
-        return observableCombineLatest(
-          this.cfUserService.getUsers(cfGuid),
-          // .pipe(tap(getUsers => console.log('getUsers', getUsers))),
-          this.cfRolesService.fetchOrgEntity(cfGuid, orgGuid)
-          // .pipe(tap(fetchOrgEntity => console.log('fetchOrgEntity', fetchOrgEntity)))
-        );
-      }),
+      mergeMap(([changed, cfGuid]) => this.cfUserService.getUsers(cfGuid)),
+      // mergeMap(([changed, cfGuid ]) => {
+      //   return observableCombineLatest(
+      //     this.cfUserService.getUsers(cfGuid),
+      // .pipe(tap(getUsers => console.log('getUsers', getUsers))),
+      // this.cfRolesService.fetchOrgEntity(cfGuid, orgGuid)
+      // .pipe(tap(fetchOrgEntity => console.log('fetchOrgEntity', fetchOrgEntity)))
+      //   );
+      // }),
       withLatestFrom(
         this.store.select(selectUsersRolesChangedRoles),
       ),
-      map(([[users, org], changes]) => {
+      map(([users, changes]) => {
         return changes
-          .map(change => ({
-            ...change,
-            userName: this.fetchUserName(change.userGuid, users),
-            spaceName: this.fetchSpaceName(change.spaceGuid, org),
-            orgName: this.fetchOrgName(change.orgGuid, org),
-            roleName: this.fetchRoleName(change.role, !change.spaceGuid)
-          }))
+          .map(change => {
+            console.log(change);
+            return {
+              ...change,
+              userName: this.fetchUserName(change.userGuid, users),
+              // spaceName: this.fetchSpaceName(change.spaceGuid, org),
+              // orgName: this.fetchOrgName(change.orgGuid, org),
+              roleName: this.fetchRoleName(change.role, !change.spaceGuid)
+            };
+          })
           .sort((a, b) => {
             return a.userName.localeCompare(b.userName);
           });
